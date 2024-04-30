@@ -15,13 +15,12 @@ library(dagitty)
 library(Rgraphviz)
 library(igraph)
 
-# Read the data
+rm(list = ls())
+
+# load data
 data <- read.table("/Users/limu/Desktop/course/ML/A12/network_assignment_data_set.txt", header = TRUE)
 
-# Check the structure of the data
-str(data)
-
-# Convert character variables to factors
+# to factors
 data$A <- as.factor(data$A)
 data$B <- as.factor(data$B)
 data$C <- as.factor(data$C)
@@ -29,29 +28,30 @@ data$D <- as.factor(data$D)
 data$E <- as.factor(data$E)
 data$F <- as.factor(data$F)
 
-# Build the Bayesian network using the hill climbing algorithm
+# build and plot DAG-structured Bayesian network
 network <- hc(data)
-
-# Plot the inferred network
 plot(network)
 
-# Check the class of the network object
-class(network)
+# moral graph
+moral_graph <- empty.graph(names(data))
+arcs <- network$arcs
+for (i in 1:nrow(arcs)) {
+  moral_graph <- set.edge(moral_graph, from=arcs[i,1], to=arcs[i,2])
+  moral_graph <- set.edge(moral_graph, from=arcs[i,2], to=arcs[i,1])
+}
 
-# Inspect the structure of the network object
-str(network)
+plot(moral_graph)
 
-# Plot the moral graph of the inferred DAG
-graphviz.plot(network)
+# cpt E to F
+fit_network <- bn.fit(network, data)
+values_E <- c("a", "b", "c")
+values_F <- c("a", "b", "c")
 
-# Moral graph of inferred DAG
-class(moral_graph)
-moral_graph <- moralize(network)
-plot(moral_graph, layout=layout_as_tree)
-
-# Extract the CPT for the edge E->F
-cpt_edge_EF <- cpt(network, "F", evidence = "E")
-
-# Print the conditional probability table
-print(cpt_edge_EF)
-
+# All combinations
+for (value_E in values_E) {
+  for (value_F in values_F) {
+    # P(F=value_F | E=value_E)
+    cpt_E_to_F <- cpquery(fit_network, event=(F==value_F), evidence=(E==value_E))
+    cat("P(F=", value_F, "|E=", value_E, "): ", cpt_E_to_F, "\n", sep="")
+  }
+}
